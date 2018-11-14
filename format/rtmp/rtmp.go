@@ -8,11 +8,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/martinz0/joy4/utils/bits/pio"
 	"github.com/martinz0/joy4/av"
 	"github.com/martinz0/joy4/av/avutil"
 	"github.com/martinz0/joy4/format/flv"
 	"github.com/martinz0/joy4/format/flv/flvio"
+	"github.com/martinz0/joy4/utils/bits/pio"
 	"io"
 	"net"
 	"net/url"
@@ -407,14 +407,14 @@ func (self *Conn) readConnect() (err error) {
 	// > _result("NetConnection.Connect.Success")
 	if err = self.writeCommandMsg(3, 0, "_result", self.commandtransid,
 		flvio.AMFMap{
-			"fmtVer":       "FMS/3,0,1,123",
-			"capabilities": 31,
+			// "fmtVer":       "FMS/3,0,1,123",
+			// "capabilities": 31,
 		},
 		flvio.AMFMap{
-			"level":          "status",
-			"code":           "NetConnection.Connect.Success",
-			"description":    "Connection succeeded.",
-			"objectEncoding": 3,
+			"level": "status",
+			"code":  "NetConnection.Connect.Success",
+			// "description":    "Connection succeeded.",
+			"objectEncoding": 0,
 		},
 	); err != nil {
 		return
