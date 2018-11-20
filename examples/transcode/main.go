@@ -2,10 +2,10 @@ package main
 
 import (
 	"github.com/martinz0/joy4/av"
-	"github.com/martinz0/joy4/av/transcode"
-	"github.com/martinz0/joy4/format"
 	"github.com/martinz0/joy4/av/avutil"
+	"github.com/martinz0/joy4/av/transcode"
 	"github.com/martinz0/joy4/cgo/ffmpeg"
+	"github.com/martinz0/joy4/format"
 )
 
 // need ffmpeg with libfdkaac installed
@@ -42,4 +42,3 @@ func main() {
 	infile.Close()
 	trans.Close()
 }
-
