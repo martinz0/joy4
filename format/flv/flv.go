@@ -3,7 +3,6 @@ package flv
 import (
 	"bufio"
 	"fmt"
-	"github.com/martinz0/joy4/utils/bits/pio"
 	"github.com/martinz0/joy4/av"
 	"github.com/martinz0/joy4/av/avutil"
 	"github.com/martinz0/joy4/codec"
@@ -11,6 +10,7 @@ import (
 	"github.com/martinz0/joy4/codec/fake"
 	"github.com/martinz0/joy4/codec/h264parser"
 	"github.com/martinz0/joy4/format/flv/flvio"
+	"github.com/martinz0/joy4/utils/bits/pio"
 	"io"
 )
 
@@ -172,7 +172,15 @@ func (self *Prober) TagToPacket(tag flvio.Tag, timestamp int32) (pkt av.Packet, 
 			pkt.Data = tag.Data
 			pkt.CompositionTime = flvio.TsToTime(tag.CompositionTime)
 			pkt.IsKeyFrame = tag.FrameType == flvio.FRAME_KEY
+
+		case flvio.AVC_SEQHDR:
+			ok = true
+			pkt.Data = tag.Data
+			pkt.CompositionTime = flvio.TsToTime(tag.CompositionTime)
+			pkt.IsKeyFrame = tag.FrameType == flvio.FRAME_KEY
+			pkt.IsSeqHDR = true
 		}
+		pkt.IsVideo = true
 
 	case flvio.TAG_AUDIO:
 		pkt.Idx = int8(self.AudioStreamIdx)
@@ -184,6 +192,11 @@ func (self *Prober) TagToPacket(tag flvio.Tag, timestamp int32) (pkt av.Packet, 
 				pkt.Data = tag.Data
 			}
 
+		case flvio.AAC_SEQHDR:
+			ok = true
+			pkt.Data = tag.Data
+			pkt.IsSeqHDR = true
+
 		case flvio.SOUND_SPEEX:
 			ok = true
 			pkt.Data = tag.Data
@@ -192,6 +205,7 @@ func (self *Prober) TagToPacket(tag flvio.Tag, timestamp int32) (pkt av.Packet, 
 			ok = true
 			pkt.Data = tag.Data
 		}
+		pkt.IsAudio = true
 	}
 
 	pkt.Time = flvio.TsToTime(timestamp)
@@ -259,12 +273,21 @@ func CodecDataToTag(stream av.CodecData) (_tag flvio.Tag, ok bool, err error) {
 func PacketToTag(pkt av.Packet, stream av.CodecData) (tag flvio.Tag, timestamp int32) {
 	switch stream.Type() {
 	case av.H264:
-		tag = flvio.Tag{
-			Type:            flvio.TAG_VIDEO,
-			AVCPacketType:   flvio.AVC_NALU,
-			CodecID:         flvio.VIDEO_H264,
-			Data:            pkt.Data,
-			CompositionTime: flvio.TimeToTs(pkt.CompositionTime),
+		if pkt.IsSeqHDR {
+			tag = flvio.Tag{
+				Type:          flvio.TAG_VIDEO,
+				AVCPacketType: flvio.AVC_SEQHDR,
+				CodecID:       flvio.VIDEO_H264,
+				Data:          pkt.Data,
+			}
+		} else {
+			tag = flvio.Tag{
+				Type:            flvio.TAG_VIDEO,
+				AVCPacketType:   flvio.AVC_NALU,
+				CodecID:         flvio.VIDEO_H264,
+				Data:            pkt.Data,
+				CompositionTime: flvio.TimeToTs(pkt.CompositionTime),
+			}
 		}
 		if pkt.IsKeyFrame {
 			tag.FrameType = flvio.FRAME_KEY
