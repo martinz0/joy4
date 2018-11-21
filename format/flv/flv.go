@@ -12,6 +12,7 @@ import (
 	"github.com/martinz0/joy4/format/flv/flvio"
 	"github.com/martinz0/joy4/utils/bits/pio"
 	"io"
+	"time"
 )
 
 var MaxProbePacketCount = 20
@@ -76,24 +77,29 @@ func (self *Prober) CacheTag(_tag flvio.Tag, timestamp int32) {
 func (self *Prober) PushTag(tag flvio.Tag, timestamp int32) (err error) {
 	self.PushedCount++
 
-	if self.PushedCount > MaxProbePacketCount {
-		err = fmt.Errorf("flv: max probe packet count reached")
-		return
-	}
+	/*
+		if self.PushedCount > MaxProbePacketCount {
+			err = fmt.Errorf("flv: max probe packet count reached")
+			return
+		}
+	*/
 
 	switch tag.Type {
 	case flvio.TAG_VIDEO:
 		switch tag.AVCPacketType {
 		case flvio.AVC_SEQHDR:
+			var stream h264parser.CodecData
+			if stream, err = h264parser.NewCodecDataFromAVCDecoderConfRecord(tag.Data); err != nil {
+				err = fmt.Errorf("flv: h264 seqhdr invalid")
+				return
+			}
 			if !self.GotVideo {
-				var stream h264parser.CodecData
-				if stream, err = h264parser.NewCodecDataFromAVCDecoderConfRecord(tag.Data); err != nil {
-					err = fmt.Errorf("flv: h264 seqhdr invalid")
-					return
-				}
 				self.VideoStreamIdx = len(self.Streams)
 				self.Streams = append(self.Streams, stream)
 				self.GotVideo = true
+			} else {
+				// replace Video CodecData
+				self.Streams[self.VideoStreamIdx] = stream
 			}
 
 		case flvio.AVC_NALU:
@@ -105,15 +111,18 @@ func (self *Prober) PushTag(tag flvio.Tag, timestamp int32) (err error) {
 		case flvio.SOUND_AAC:
 			switch tag.AACPacketType {
 			case flvio.AAC_SEQHDR:
+				var stream aacparser.CodecData
+				if stream, err = aacparser.NewCodecDataFromMPEG4AudioConfigBytes(tag.Data); err != nil {
+					err = fmt.Errorf("flv: aac seqhdr invalid")
+					return
+				}
 				if !self.GotAudio {
-					var stream aacparser.CodecData
-					if stream, err = aacparser.NewCodecDataFromMPEG4AudioConfigBytes(tag.Data); err != nil {
-						err = fmt.Errorf("flv: aac seqhdr invalid")
-						return
-					}
 					self.AudioStreamIdx = len(self.Streams)
 					self.Streams = append(self.Streams, stream)
 					self.GotAudio = true
+				} else {
+					// replace Audio CodecData
+					self.Streams[self.AudioStreamIdx-1] = stream
 				}
 
 			case flvio.AAC_RAW:
@@ -209,6 +218,7 @@ func (self *Prober) TagToPacket(tag flvio.Tag, timestamp int32) (pkt av.Packet, 
 	}
 
 	pkt.Time = flvio.TsToTime(timestamp)
+	pkt.ReachAt = time.Now()
 	return
 }
 

@@ -47,6 +47,12 @@ var (
 		Help:      "interval duration bettween first I/P frame",
 		Name:      "waitfirstkeyframe",
 	}, constLabels)
+	framelatency = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "streamer",
+		Subsystem: "server",
+		Help:      "interval duration bettween frame reach at and send out",
+		Name:      "framelatency",
+	}, constLabels)
 )
 
 func init() {
@@ -56,4 +62,5 @@ func init() {
 	prometheus.MustRegister(vseqhdr)
 	prometheus.MustRegister(aseqhdr)
 	prometheus.MustRegister(waitfirstkeyframe)
+	prometheus.MustRegister(framelatency)
 }

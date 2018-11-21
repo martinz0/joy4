@@ -236,6 +236,8 @@ type Packet struct {
 	IsVideo  bool
 	IsAudio  bool
 	IsSeqHDR bool
+	// Packet到达服务器的时间
+	ReachAt time.Time
 }
 
 // Raw audio frame.

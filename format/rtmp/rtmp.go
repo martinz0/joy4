@@ -788,6 +788,9 @@ func (self *Conn) ReadPacket() (pkt av.Packet, err error) {
 
 		var ok bool
 		if pkt, ok = self.prober.TagToPacket(tag, int32(self.timestamp)); ok {
+			if pkt.IsSeqHDR {
+				err = self.prober.PushTag(tag, 0)
+			}
 			return
 		}
 	}
