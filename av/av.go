@@ -232,6 +232,10 @@ type Packet struct {
 	CompositionTime time.Duration // packet presentation time minus decode time for H264 B-Frame
 	Time            time.Duration // packet decode time
 	Data            []byte        // packet data
+
+	IsVideo  bool
+	IsAudio  bool
+	IsSeqHDR bool
 }
 
 // Raw audio frame.
