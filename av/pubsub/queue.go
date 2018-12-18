@@ -5,6 +5,7 @@ import (
 	"github.com/martinz0/joy4/av"
 	"github.com/martinz0/joy4/av/pktque"
 	"io"
+	"log"
 	"sync"
 	"time"
 )
@@ -82,6 +83,18 @@ func (self *Queue) Close() (err error) {
 // Put packet into buffer, old packets will be discared.
 func (self *Queue) WritePacket(pkt av.Packet) (err error) {
 	self.lock.Lock()
+
+	/*
+		if pkt.IsKeyFrame {
+			// 拿到I帧, 清空前面所有帧
+			if self.buf.Count > 0 {
+				println("drop frames: ", self.buf.Count)
+			}
+			for ; self.buf.Count > 0; self.buf.Pop() {
+			}
+		}
+		self.buf.Push(pkt)
+	*/
 
 	self.buf.Push(pkt)
 	if pkt.Idx == int8(self.videoidx) && pkt.IsKeyFrame {
@@ -198,8 +211,10 @@ func (self *QueueCursor) ReadPacket() (pkt av.Packet, err error) {
 	for {
 		if self.pos.LT(buf.Head) {
 			self.pos = buf.Head
+			log.Println("less", self.pos, buf.Head)
 		} else if self.pos.GT(buf.Tail) {
 			self.pos = buf.Tail
+			log.Println("more", self.pos, buf.Tail)
 		}
 		if buf.IsValidPos(self.pos) {
 			pkt = buf.Get(self.pos)

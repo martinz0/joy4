@@ -320,10 +320,10 @@ func CopyPackets(dst av.PacketWriter, src av.PacketReader, labels prometheus.Lab
 			}
 		}
 
-		framelatency.With(labels).Set(float64(int(time.Since(pkt.ReachAt) / time.Millisecond)))
 		if err = dst.WritePacket(pkt); err != nil {
 			return
 		}
+		framelatency.With(labels).Set(float64(int(time.Since(pkt.ReachAt) / time.Millisecond)))
 	}
 	return
 }
