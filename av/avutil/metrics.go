@@ -17,6 +17,12 @@ var (
 		Help:      "help watch fps",
 		Name:      "frames",
 	}, constLabels)
+	bits = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "streamer",
+		Subsystem: "server",
+		Help:      "help watch bitrate",
+		Name:      "bits",
+	}, constLabels)
 	vseqhdr = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "streamer",
 		Subsystem: "server",
@@ -57,6 +63,7 @@ var (
 
 func init() {
 	prometheus.MustRegister(frames)
+	prometheus.MustRegister(bits)
 	prometheus.MustRegister(keyframe)
 	prometheus.MustRegister(firstkeyframe)
 	prometheus.MustRegister(vseqhdr)

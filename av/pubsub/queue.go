@@ -2,12 +2,15 @@
 package pubsub
 
 import (
-	"github.com/martinz0/joy4/av"
-	"github.com/martinz0/joy4/av/pktque"
+	"fmt"
 	"io"
 	"log"
 	"sync"
 	"time"
+
+	"github.com/martinz0/joy4/av"
+	"github.com/martinz0/joy4/av/pktque"
+	"github.com/martinz0/joy4/codec/h264parser"
 )
 
 //        time
@@ -30,6 +33,8 @@ type Queue struct {
 	streams                  []av.CodecData
 	videoidx                 int
 	closed                   bool
+
+	jumped bool
 }
 
 func NewQueue() *Queue {
@@ -84,32 +89,51 @@ func (self *Queue) Close() (err error) {
 func (self *Queue) WritePacket(pkt av.Packet) (err error) {
 	self.lock.Lock()
 
-	/*
-		if pkt.IsKeyFrame {
-			// 拿到I帧, 清空前面所有帧
-			if self.buf.Count > 0 {
-				println("drop frames: ", self.buf.Count)
-			}
-			for ; self.buf.Count > 0; self.buf.Pop() {
+	if pkt.IsKeyFrame {
+		// 拿到I帧, 清空前面所有帧
+		// if self.buf.Count > 0 {
+		// }
+		// println("drop frames: ", self.buf.Count)
+		for self.buf.Count > 0 {
+			poped := self.buf.Pop()
+			if poped.IsSeqHDR {
+				self.jumped = true
 			}
 		}
-		self.buf.Push(pkt)
-	*/
+	}
+
+	if pkt.IsSeqHDR {
+		// FIXME
+		var stream h264parser.CodecData
+		if stream, err = h264parser.NewCodecDataFromAVCDecoderConfRecord(pkt.Data); err != nil {
+			err = fmt.Errorf("flv: h264 seqhdr invalid")
+			return
+		}
+		self.streams[self.videoidx] = stream
+
+		// AUDIO Header?
+	}
 
 	self.buf.Push(pkt)
-	if pkt.Idx == int8(self.videoidx) && pkt.IsKeyFrame {
-		self.curgopcount++
-	}
+	// if pkt.Idx == int8(self.videoidx) && pkt.IsKeyFrame {
+	// 	self.curgopcount++
+	// }
 
-	for self.curgopcount >= self.maxgopcount && self.buf.Count > 1 {
-		pkt := self.buf.Pop()
-		if pkt.Idx == int8(self.videoidx) && pkt.IsKeyFrame {
-			self.curgopcount--
-		}
-		if self.curgopcount < self.maxgopcount {
-			break
-		}
-	}
+	// for self.curgopcount >= self.maxgopcount && self.buf.Count > 1 {
+	// 	pkt := self.buf.Pop()
+	// 	if pkt.Idx == int8(self.videoidx) && pkt.IsKeyFrame {
+	// 		self.curgopcount--
+	// 	}
+	// 	/*
+	// 		if pkt.IsSeqHDR {
+	// 			self.jumped = true
+	// 			log.Println("HDR jumped", self.curgopcount, self.maxgopcount, self.buf.Count)
+	// 		}
+	// 	*/
+	// 	if self.curgopcount < self.maxgopcount {
+	// 		break
+	// 	}
+	// }
 	//println("shrink", self.curgopcount, self.maxgopcount, self.buf.Head, self.buf.Tail, "count", self.buf.Count, "size", self.buf.Size)
 
 	self.cond.Broadcast()
@@ -208,16 +232,24 @@ func (self *QueueCursor) ReadPacket() (pkt av.Packet, err error) {
 		self.pos = self.init(buf, self.que.videoidx)
 		self.gotpos = true
 	}
+	var jumped bool
 	for {
+		oriPos := self.pos
 		if self.pos.LT(buf.Head) {
 			self.pos = buf.Head
-			log.Println("less", self.pos, buf.Head)
+			jumped = true
+			log.Println("less", oriPos, buf.Head)
 		} else if self.pos.GT(buf.Tail) {
 			self.pos = buf.Tail
-			log.Println("more", self.pos, buf.Tail)
+			jumped = true
+			log.Println("more", oriPos, buf.Tail)
 		}
 		if buf.IsValidPos(self.pos) {
 			pkt = buf.Get(self.pos)
+			if jumped && self.que.jumped {
+				pkt.Jumped = true
+				self.que.jumped = false
+			}
 			self.pos++
 			break
 		}

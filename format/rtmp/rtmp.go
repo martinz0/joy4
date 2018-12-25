@@ -82,6 +82,12 @@ func (self *Server) handleConn(conn *Conn) (err error) {
 	return
 }
 
+func (self *Server) HandleNetConn(netconn net.Conn) error {
+	conn := NewConn(netconn)
+	conn.isserver = true
+	return self.handleConn(conn)
+}
+
 func (self *Server) ListenAndServe() (err error) {
 	addr := self.Addr
 	if addr == "" {

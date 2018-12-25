@@ -291,12 +291,28 @@ func CopyPackets(dst av.PacketWriter, src av.PacketReader, labels prometheus.Lab
 			return
 		}
 
+		if pkt.Jumped && !pkt.IsSeqHDR {
+			demuxer, ok1 := src.(av.Demuxer)
+			muxer, ok2 := dst.(av.Muxer)
+			if ok1 && ok2 {
+				// write header
+				var streams []av.CodecData
+				if streams, err = demuxer.Streams(); err != nil {
+					return
+				}
+				if err = muxer.WriteHeader(streams); err != nil {
+					return
+				}
+			}
+		}
+
 		switch {
 		case pkt.IsVideo:
 			if pkt.IsSeqHDR {
 				vseqhdr.With(labels).Inc()
 			} else {
 				frames.With(labels).Inc()
+				bits.With(labels).Add(float64(8 * len(pkt.Data)))
 				if pkt.IsKeyFrame {
 					keyframe.With(labels).Inc()
 					keyOnce.Do(func() {

@@ -238,6 +238,7 @@ type Packet struct {
 	IsSeqHDR bool
 	// Packet到达服务器的时间
 	ReachAt time.Time
+	Jumped  bool
 }
 
 // Raw audio frame.
