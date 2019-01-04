@@ -291,6 +291,8 @@ func CopyPackets(dst av.PacketWriter, src av.PacketReader, labels prometheus.Lab
 			return
 		}
 
+		totalbits.With(labels).Add(float64(8 * len(pkt.Data)))
+
 		if pkt.Jumped && !pkt.IsSeqHDR {
 			demuxer, ok1 := src.(av.Demuxer)
 			muxer, ok2 := dst.(av.Muxer)

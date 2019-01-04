@@ -20,8 +20,14 @@ var (
 	bits = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "streamer",
 		Subsystem: "server",
-		Help:      "help watch bitrate",
+		Help:      "help watch video bitrate",
 		Name:      "bits",
+	}, constLabels)
+	totalbits = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "streamer",
+		Subsystem: "server",
+		Help:      "help watch total bitrate",
+		Name:      "totalbits",
 	}, constLabels)
 	vseqhdr = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "streamer",
