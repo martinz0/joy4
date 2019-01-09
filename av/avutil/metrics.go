@@ -70,6 +70,7 @@ var (
 func init() {
 	prometheus.MustRegister(frames)
 	prometheus.MustRegister(bits)
+	prometheus.MustRegister(totalbits)
 	prometheus.MustRegister(keyframe)
 	prometheus.MustRegister(firstkeyframe)
 	prometheus.MustRegister(vseqhdr)

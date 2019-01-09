@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -109,6 +110,12 @@ func (self *Queue) WritePacket(pkt av.Packet) (err error) {
 			err = fmt.Errorf("flv: h264 seqhdr invalid")
 			return
 		}
+		defer func() {
+			if e := recover(); e != nil {
+				fmt.Println("PANIC", len(self.streams), self.videoidx, e)
+				os.Exit(1)
+			}
+		}()
 		self.streams[self.videoidx] = stream
 
 		// AUDIO Header?
