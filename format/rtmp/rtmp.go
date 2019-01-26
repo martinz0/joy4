@@ -206,7 +206,22 @@ func (self *txrxcount) Write(p []byte) (int, error) {
 	return n, err
 }
 
+type readConn struct {
+	net.Conn
+	readTimeout time.Duration
+}
+
+func newReadConn(conn net.Conn, readTimeout time.Duration) net.Conn {
+	return &readConn{Conn: conn, readTimeout: readTimeout}
+}
+
+func (c *readConn) Read(b []byte) (int, error) {
+	c.Conn.SetReadDeadline(time.Now().Add(c.readTimeout))
+	return c.Conn.Read(b)
+}
+
 func NewConn(netconn net.Conn) *Conn {
+	netconn = newReadConn(netconn, time.Second)
 	conn := &Conn{}
 	conn.prober = &flv.Prober{}
 	conn.netconn = netconn
