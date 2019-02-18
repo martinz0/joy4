@@ -415,7 +415,7 @@ func (self *Muxer) WritePacket(pkt av.Packet) (err error) {
 	if err = flvio.WriteTag(self.bufw, tag, timestamp, self.b); err != nil {
 		return
 	}
-	return
+	return self.bufw.Flush()
 }
 
 func (self *Muxer) WriteTrailer() (err error) {
