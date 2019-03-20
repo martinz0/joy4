@@ -112,11 +112,13 @@ func (self *Queue) WritePacket(pkt av.Packet) (err error) {
 		}
 		defer func() {
 			if e := recover(); e != nil {
-				fmt.Println("PANIC", len(self.streams), self.videoidx, e)
+				fmt.Println("PANIC", len(self.streams), self.videoidx, e, pkt.IsVideo, pkt.IsKeyFrame, pkt.IsSeqHDR, pkt.Idx)
 				os.Exit(1)
 			}
 		}()
-		self.streams[self.videoidx] = stream
+		if self.videoidx >= 0 {
+			self.streams[self.videoidx] = stream
+		}
 
 		// AUDIO Header?
 	}
