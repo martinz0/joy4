@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"sync"
 	"time"
 
 	"github.com/martinz0/joy4/av"
 	"github.com/martinz0/joy4/av/pktque"
+	"github.com/martinz0/joy4/codec/aacparser"
 	"github.com/martinz0/joy4/codec/h264parser"
 )
 
@@ -33,6 +33,7 @@ type Queue struct {
 	curgopcount, maxgopcount int
 	streams                  []av.CodecData
 	videoidx                 int
+	audioidx                 int
 	closed                   bool
 
 	jumped bool
@@ -45,6 +46,7 @@ func NewQueue() *Queue {
 	q.lock = &sync.RWMutex{}
 	q.cond = sync.NewCond(q.lock.RLocker())
 	q.videoidx = -1
+	q.audioidx = -1
 	return q
 }
 
@@ -62,6 +64,8 @@ func (self *Queue) WriteHeader(streams []av.CodecData) error {
 	for i, stream := range streams {
 		if stream.Type().IsVideo() {
 			self.videoidx = i
+		} else if stream.Type().IsAudio() {
+			self.audioidx = i
 		}
 	}
 	self.cond.Broadcast()
@@ -90,7 +94,7 @@ func (self *Queue) Close() (err error) {
 func (self *Queue) WritePacket(pkt av.Packet) (err error) {
 	self.lock.Lock()
 
-	if pkt.IsKeyFrame {
+	if pkt.IsKeyFrame && pkt.IsVideo {
 		// 拿到I帧, 清空前面所有帧
 		// if self.buf.Count > 0 {
 		// }
@@ -104,23 +108,29 @@ func (self *Queue) WritePacket(pkt av.Packet) (err error) {
 	}
 
 	if pkt.IsSeqHDR {
-		// FIXME
-		var stream h264parser.CodecData
-		if stream, err = h264parser.NewCodecDataFromAVCDecoderConfRecord(pkt.Data); err != nil {
-			err = fmt.Errorf("flv: h264 seqhdr invalid")
-			return
-		}
-		defer func() {
-			if e := recover(); e != nil {
-				fmt.Println("PANIC", len(self.streams), self.videoidx, e, pkt.IsVideo, pkt.IsKeyFrame, pkt.IsSeqHDR, pkt.Idx)
-				os.Exit(1)
+		if pkt.IsVideo {
+			stream, err := h264parser.NewCodecDataFromAVCDecoderConfRecord(pkt.Data)
+			if err != nil {
+				return fmt.Errorf("flv: h264 seqhdr invalid")
 			}
-		}()
-		if self.videoidx >= 0 {
-			self.streams[self.videoidx] = stream
+			if self.videoidx >= 0 {
+				self.streams[self.videoidx] = stream
+			} else {
+				self.videoidx = len(self.streams)
+				self.streams = append(self.streams, stream)
+			}
+		} else if pkt.IsAudio {
+			stream, err := aacparser.NewCodecDataFromMPEG4AudioConfigBytes(pkt.Data)
+			if err != nil {
+				return fmt.Errorf("flv: aac seqhdr invalid")
+			}
+			if self.audioidx >= 0 {
+				self.streams[self.audioidx] = stream
+			} else {
+				self.audioidx = len(self.streams)
+				self.streams = append(self.streams, stream)
+			}
 		}
-
-		// AUDIO Header?
 	}
 
 	self.buf.Push(pkt)

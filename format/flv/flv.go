@@ -348,9 +348,11 @@ func PacketToTag(pkt av.Packet, stream av.CodecData) (tag flvio.Tag, timestamp i
 }
 
 type Muxer struct {
-	bufw    writeFlusher
-	b       []byte
-	streams []av.CodecData
+	bufw     writeFlusher
+	b        []byte
+	streams  []av.CodecData
+	videoidx int
+	audioidx int
 
 	once sync.Once
 }
@@ -362,8 +364,10 @@ type writeFlusher interface {
 
 func NewMuxerWriteFlusher(w writeFlusher) *Muxer {
 	return &Muxer{
-		bufw: w,
-		b:    make([]byte, 256),
+		bufw:     w,
+		b:        make([]byte, 256),
+		audioidx: -1,
+		videoidx: -1,
 	}
 }
 
@@ -376,11 +380,13 @@ var CodecTypes = []av.CodecType{av.H264, av.AAC, av.SPEEX}
 func (self *Muxer) WriteHeader(streams []av.CodecData) (err error) {
 	self.once.Do(func() {
 		var flags uint8
-		for _, stream := range streams {
+		for idx, stream := range streams {
 			if stream.Type().IsVideo() {
 				flags |= flvio.FILE_HAS_VIDEO
+				self.videoidx = idx
 			} else if stream.Type().IsAudio() {
 				flags |= flvio.FILE_HAS_AUDIO
+				self.audioidx = idx
 			}
 		}
 
@@ -409,6 +415,32 @@ func (self *Muxer) WriteHeader(streams []av.CodecData) (err error) {
 }
 
 func (self *Muxer) WritePacket(pkt av.Packet) (err error) {
+	if pkt.IsSeqHDR {
+		if pkt.IsVideo {
+			stream, err := h264parser.NewCodecDataFromAVCDecoderConfRecord(pkt.Data)
+			if err != nil {
+				return fmt.Errorf("flv: h264 seqhdr invalid")
+			}
+			if self.videoidx >= 0 {
+				self.streams[self.videoidx] = stream
+			} else {
+				self.videoidx = len(self.streams)
+				self.streams = append(self.streams, stream)
+			}
+		} else if pkt.IsAudio {
+			stream, err := aacparser.NewCodecDataFromMPEG4AudioConfigBytes(pkt.Data)
+			if err != nil {
+				return fmt.Errorf("flv: aac seqhdr invalid")
+			}
+			if self.audioidx >= 0 {
+				self.streams[self.audioidx] = stream
+			} else {
+				self.audioidx = len(self.streams)
+				self.streams = append(self.streams, stream)
+			}
+		}
+	}
+
 	stream := self.streams[pkt.Idx]
 	tag, timestamp := PacketToTag(pkt, stream)
 
