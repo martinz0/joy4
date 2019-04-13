@@ -378,7 +378,6 @@ func NewMuxer(w io.Writer) *Muxer {
 var CodecTypes = []av.CodecType{av.H264, av.AAC, av.SPEEX}
 
 func (self *Muxer) WriteHeader(streams []av.CodecData) (err error) {
-	// self.once.Do(func() {
 	var flags uint8
 	for idx, stream := range streams {
 		if stream.Type().IsVideo() {
@@ -390,9 +389,10 @@ func (self *Muxer) WriteHeader(streams []av.CodecData) (err error) {
 		}
 	}
 
-	n := flvio.FillFileHeader(self.b, flags)
-	_, err = self.bufw.Write(self.b[:n])
-	// })
+	self.once.Do(func() {
+		n := flvio.FillFileHeader(self.b, flags)
+		_, err = self.bufw.Write(self.b[:n])
+	})
 	if err != nil {
 		return err
 	}
