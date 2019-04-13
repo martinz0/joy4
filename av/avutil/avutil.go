@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"net/url"
 	"os"
 	"path"
@@ -294,6 +295,7 @@ func CopyPackets(dst av.PacketWriter, src av.PacketReader, labels prometheus.Lab
 		totalbits.With(labels).Add(float64(8 * len(pkt.Data)))
 
 		if pkt.Jumped && !pkt.IsSeqHDR {
+			log.Println(labels["who"], "jumped hdr, write header", pkt.IsVideo, pkt.IsAudio)
 			demuxer, ok1 := src.(av.Demuxer)
 			muxer, ok2 := dst.(av.Muxer)
 			if ok1 && ok2 {
