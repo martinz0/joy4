@@ -281,6 +281,8 @@ func Create(url string) (muxer av.MuxCloser, err error) {
 }
 
 func CopyPackets(dst av.PacketWriter, src av.PacketReader, labels prometheus.Labels) (err error) {
+	defer clearMetrics(labels)
+
 	var firstNonKeyFrame time.Time
 	var keyOnce, nonKeyOnce sync.Once
 	for {

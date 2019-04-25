@@ -9,6 +9,18 @@ type PacketLabelValue struct {
 	Op  string
 }
 
+func clearMetrics(labels prometheus.Labels) {
+	frames.Delete(labels)
+	bits.Delete(labels)
+	totalbits.Delete(labels)
+	keyframe.Delete(labels)
+	firstkeyframe.Delete(labels)
+	vseqhdr.Delete(labels)
+	aseqhdr.Delete(labels)
+	waitfirstkeyframe.Delete(labels)
+	framelatency.Delete(labels)
+}
+
 var (
 	constLabels = []string{"who", "op"}
 	frames      = prometheus.NewCounterVec(prometheus.CounterOpts{
