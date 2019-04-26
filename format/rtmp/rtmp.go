@@ -221,7 +221,7 @@ func (c *readConn) Read(b []byte) (int, error) {
 }
 
 func NewConn(netconn net.Conn) *Conn {
-	netconn = newReadConn(netconn, 10*time.Second)
+	netconn = newReadConn(netconn, time.Second)
 	conn := &Conn{}
 	conn.prober = &flv.Prober{}
 	conn.netconn = netconn
